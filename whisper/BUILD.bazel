@@ -28,6 +28,11 @@ oci_image(
     base = "@distroless_base",
     tars = [":app_layer"],
     entrypoint = ["/whisper", "--daemon", "any-other-argument"],
+    target_compatible_with = select({
+        "@platforms//cpu:x86_64": ["@platforms//os:linux"],
+        "@platforms//cpu:arm64": ["@platforms//os:linux"],
+        "//conditions:default": ["@platforms//:incompatible"], # not compatible otherwise
+    }),
 )
 
 oci_tarball(

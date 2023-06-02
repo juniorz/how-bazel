@@ -116,3 +116,8 @@ colima stop --profile intel
 ```
 
 Note that this model also simplifies many tasks, such as base image management (e.g. upgrades, consistency across packages) and building "cross platform" images (e.g. build `amd64` images from `darwin/arm64` hosts). Also note that you can't generate the tarball for [both target platforms at once](https://github.com/bazelbuild/bazel/issues/6044) because the output-dir is based on the "host" platform.
+
+#### Restricting targets to specific platforms
+
+Container are supported by a wide range of operating systems, as long as they are not macOS :P
+For this reason, it is reasonable to restrict the target that generate container images to target platforms in which containers are supported. This can easily be implemented via `target_compatible_with` along with [platform constraints](https://bazel.build/extending/platforms#skipping-incompatible-targets).
