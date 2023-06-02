@@ -1,4 +1,6 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_test")
+load("@rules_pkg//:pkg.bzl", "pkg_tar")
+load("@rules_oci//oci:defs.bzl", "oci_image", "oci_tarball")
 
 go_binary(
     name = "whisper",
@@ -13,5 +15,25 @@ go_test(
     srcs = [
         "greeter.go",
         "greeter_test.go",
+    ],
+)
+
+pkg_tar(
+    name = "app_layer",
+    srcs = [":whisper"],
+)
+
+oci_image(
+    name = "image",
+    base = "@distroless_base",
+    tars = [":app_layer"],
+    entrypoint = ["/whisper", "--daemon", "any-other-argument"],
+)
+
+oci_tarball(
+    name = "tarball",
+    image = ":image",
+    repo_tags = [
+        "juniorz/whisper:dev",
     ],
 )

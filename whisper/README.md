@@ -5,6 +5,7 @@ Dependencies on the host
 ```
 brew install bazel
 brew install golang
+brew install colima docker
 ```
 
 ### Creating a Golang project
@@ -85,3 +86,33 @@ bazel run //whisper
 ```
 
 NOTE: `//whisper` can also (confusingly) refer to a package name when used in `package_group`, but can NEVER refer to all targets in the same package when used in `BUILD`.
+
+### Bulding a ~~Docker~~ OCI image
+
+[`rules_oci`](https://github.com/bazel-contrib/rules_oci) is the current plugin to build container images, and the previous [`rules_docker`](https://github.com/bazelbuild/rules_docker#status) is in maintenance mode.
+
+Here's where things get a little complicated in terms of the architecture. By default, Bazel uses single-platform builds: the host (where Bazel runs), execution (where the build tools run), and the target (where the final output reside/runs) are the same.
+
+That means `bazel build` will produce a `darwin/arm64` binary when run on a [Mac computer with Apple silicon](https://support.apple.com/en-us/HT211814), a `darwin/amd64` on any Intel-based Mac computer, and a `linux/amd64` on any other x86_64 Linux computer.
+
+Remember to match the platform of your container and your application binary:
+
+```
+bazel build --platforms=@io_bazel_rules_go//go/toolchain:linux_arm64 @//whisper:tarball
+colima start --arch aarch64 --cpu 4 --memory 2
+docker load --input $(bazel cquery --platforms=@io_bazel_rules_go//go/toolchain:linux_arm64 --output=files @//whisper:tarball)
+docker run --rm juniorz/how-bazel/whisper:dev
+colima stop
+```
+
+and
+
+```
+bazel build --platforms=@io_bazel_rules_go//go/toolchain:linux_amd64 @//whisper:tarball
+colima start --profile intel --arch x86_64 --cpu 4 --memory 2
+docker load --input $(bazel cquery --platforms=@io_bazel_rules_go//go/toolchain:linux_amd64 --output=files @//whisper:tarball)
+docker run --platform linux/amd64 --rm juniorz/how-bazel/whisper:dev
+colima stop --profile intel
+```
+
+Note that this model also simplifies many tasks, such as base image management (e.g. upgrades, consistency across packages) and building "cross platform" images (e.g. build `amd64` images from `darwin/arm64` hosts). Also note that you can't generate the tarball for [both target platforms at once](https://github.com/bazelbuild/bazel/issues/6044) because the output-dir is based on the "host" platform.
