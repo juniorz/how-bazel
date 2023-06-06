@@ -1,6 +1,7 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_test")
 load("@rules_pkg//:pkg.bzl", "pkg_tar")
-load("@rules_oci//oci:defs.bzl", "oci_image", "oci_tarball")
+load("@aspect_bazel_lib//lib:transitions.bzl", "platform_transition_filegroup")
+load("@rules_oci//oci:defs.bzl", "oci_image", "oci_image_index", "oci_tarball", "oci_push")
 
 go_binary(
     name = "whisper",
@@ -41,4 +42,31 @@ oci_tarball(
     repo_tags = [
         "juniorz/whisper:dev",
     ],
+)
+
+platform_transition_filegroup(
+    name = "image_arm64",
+    srcs = [":image"],
+    target_platform = "@io_bazel_rules_go//go/toolchain:linux_arm64",
+)
+
+platform_transition_filegroup(
+    name = "image_amd64",
+    srcs = [":image"],
+    target_platform = "@io_bazel_rules_go//go/toolchain:linux_amd64",
+)
+
+oci_image_index(
+    name = "multiarch_image",
+    images = [
+        ":image_arm64",
+        ":image_amd64",
+    ],
+)
+
+oci_push(
+    name = "push_image",
+    image = ":multiarch_image",
+    repository = "index.docker.io/juniorz/whisper",
+    remote_tags = ["latest"],
 )

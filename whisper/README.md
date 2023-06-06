@@ -121,3 +121,30 @@ Note that this model also simplifies many tasks, such as base image management (
 
 Container are supported by a wide range of operating systems, as long as they are not macOS :P
 For this reason, it is reasonable to restrict the target that generate container images to target platforms in which containers are supported. This can easily be implemented via `target_compatible_with` along with [platform constraints](https://bazel.build/extending/platforms#skipping-incompatible-targets).
+
+#### Publishing multi-architecture images
+
+Container registries support images with multiple architectures (e.g. [Docker Manifest List](https://docs.docker.com/registry/spec/manifest-v2-2/#manifest-list) and [OCI Image Index](https://github.com/opencontainers/image-spec/blob/main/image-index.md)).
+
+Building and publishing multi-architecture images is also fairly simple. `platform_transition_filegroup` can be used to "transition" the same `oci_image` to multiple target platforms as separate targets.
+
+```
+bazel run @//whisper:push_image
+docker run -it ghcr.io/regclient/regctl:latest image manifest index.docker.io/juniorz/whisper:latest
+```
+
+then
+
+```
+colima start --arch aarch64 --cpu 4 --memory 2
+docker run index.docker.io/juniorz/whisper:latest
+colima stop
+```
+
+and
+
+```
+colima start --profile intel --arch x86_64 --cpu 4 --memory 2
+docker run --platform linux/amd64 index.docker.io/juniorz/whisper:latest
+colima stop --profile intel
+```
